@@ -31,3 +31,4 @@
         <plink:role name="WarehouseProvider" portType="ns1:Warehouse"/>
     </plink:partnerLinkType>
 </wsdl:definitions>
+
