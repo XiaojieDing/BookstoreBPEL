@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<process
+    name="Bookstore"
+    targetNamespace="http://enterprise.netbeans.org/bpel/BookstoreBPEL/Bookstore"
+    xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:sxt="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/Trace" 
+    xmlns:sxed="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/Editor"
+    xmlns:tns="http://enterprise.netbeans.org/bpel/BookstoreBPEL/Bookstore" xmlns:ns0="http://infosys.tuwien.ac.at/aic10/ass2/OrderProcessSchema" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/warehouse">
+    <import namespace="http://infosys.tuwien.ac.at/aic10/ass2/process" location="OrderProcess.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://enterprise.netbeans.org/bpel/bookstoreWrapper" location="bookstoreWrapper.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://services.bookstore/" location="bookstore.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://bookstore/" location="../nbproject/private/cache/retriever/localhost_9000/bookstore.wsdl_Bookstore.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://services.bookstore/" location="customermanagement.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://infosys.tuwien.ac.at/aic10/ass1/dto/customermanagement" location="../nbproject/private/cache/retriever/localhost_9000/customermanagement.wsdl_CustomerManagement.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://services.bookstore/" location="warehouse.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://infosys.tuwien.ac.at/aic10/ass1/dto/warehouse" location="../nbproject/private/cache/retriever/localhost_9000/warehouse.wsdl_Warehouse.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://infosys.tuwien.ac.at/aic10/ass1/dto/supplier" location="supplierfacade.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://bookstore/" location="../nbproject/private/cache/retriever/localhost_9000/supplierfacade.wsdl_Supplier.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <partnerLinks>
+        <partnerLink name="CustomerManagement" xmlns:tns="http://services.bookstore/" partnerLinkType="tns:CustomerManagementLinkType" partnerRole="CustomerManagementProvider"/>
+        <partnerLink name="Warehouse" xmlns:tns="http://services.bookstore/" partnerLinkType="tns:WarehouseLinkType" partnerRole="WarehouseProvider"/>
+        <partnerLink name="Supplier" xmlns:tns="http://infosys.tuwien.ac.at/aic10/ass1/dto/supplier" partnerLinkType="tns:SupplierLinkType" partnerRole="SupplierProvider"/>
+        <partnerLink name="Bookstore" xmlns:tns="http://services.bookstore/" partnerLinkType="tns:BookstoreLinkType" myRole="BookstoreProvider"/>
+    </partnerLinks>
+    <variables>
+        <variable name="RequestOrderOut" xmlns:ns1="http://bookstore/" messageType="ns1:requestOrderResponse"/>
+        <variable name="RequestOrderIn" xmlns:ns1="http://bookstore/" messageType="ns1:requestOrder"/>
+        <variable name="Get_customerOut" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/customermanagement" messageType="ns1:get_customerResponse"/>
+        <variable name="Get_customerIn" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/customermanagement" messageType="ns1:get_customer"/>
+    </variables>
+    <sequence>
+        <sequence name="Sequence">
+            <receive name="Start" createInstance="yes" partnerLink="Bookstore" operation="requestOrder" xmlns:tns="http://infosys.tuwien.ac.at/aic10/ass2/process" portType="ns1:Bookstore" variable="RequestOrderIn" xmlns:ns1="http://bookstore/"/>
+            <assign name="RequestOrder">
+                <copy>
+                    <from>$RequestOrderIn.parameters/arg0/customer/@id</from>
+                    <to>$Get_customerIn.parameters/arg0</to>
+                </copy>
+            </assign>
+            <invoke name="InvokeCustomerManagement" partnerLink="CustomerManagement" operation="get_customer" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/customermanagement" portType="ns1:CustomerManagement" inputVariable="Get_customerIn" outputVariable="Get_customerOut"/>
+            <if name="If_CustomerAvailable">
+                <condition>$Get_customerOut.parameters/return/@id = $RequestOrderIn.parameters/arg0/customer/@id</condition>
+                <!--<sequence name="Sequence2">-->
+                    <forEach name="ForEachItem" parallel="no" counterName="ForEach1Counter">
+                        <startCounterValue>0</startCounterValue>
+                            <finalCounterValue>number($RequestOrderIn.parameters/arg0/items)</finalCounterValue>
+                            <completionCondition>
+                                <branches></branches>
+                            </completionCondition>
+                            <scope name="ScopeEachItem">
+                                <variables>
+                                    <variable name="SupplierOrderOut" xmlns:ns1="http://bookstore/" messageType="ns1:orderResponse"/>
+                                    <variable name="SupplierOrderIn" xmlns:ns1="http://bookstore/" messageType="ns1:order"/>
+                                    <variable name="OrderOut" messageType="ns1:orderResponse"/>
+                                    <variable name="OrderIn" messageType="ns1:order"/>
+                                    <variable name="Check_availabilityOut" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/warehouse" messageType="ns1:check_availabilityResponse"/>
+                                            <variable name="Check_availabilityIn" xmlns:ns1="http://infosys.tuwien.ac.at/aic10/ass1/dto/warehouse" messageType="ns1:check_availability"/>
+                                    </variables>
+                                    <sequence name="Sequence1">
+                                        <assign name="CopyOneItem">
+                                            <copy>
+                                                <from>$RequestOrderIn.parameters/arg0/items/item/product</from>
+                                                <to>$Check_availabilityIn.parameters/arg0</to>
+                                            </copy>
+                                            <copy>
+                                                <from>$RequestOrderIn.parameters/arg0/items/item/quantity</from>
+                                                <to>$Check_availabilityIn.parameters/arg1</to>
+                                            </copy>
+                                        </assign>
+                                        <invoke name="InvokeWarehouse" partnerLink="Warehouse" operation="check_availability" portType="ns1:Warehouse" inputVariable="Check_availabilityIn" outputVariable="Check_availabilityOut"/>
+                                            <if name="If_AvailableInWarehouse">
+                                                <condition>$Check_availabilityOut.parameters/return/isAvailable</condition>
+                                                <sequence name="Sequence2">
+                                                    <assign name="CopyOrderToWarehouse">
+                                                        <copy>
+                                                            <from>$Check_availabilityIn.parameters/arg0</from>
+                                                            <to>$OrderIn.parameters/arg0</to>
+                                                        </copy>
+                                                        <copy>
+                                                            <from>$Check_availabilityIn.parameters/arg1</from>
+                                                            <to>$OrderIn.parameters/arg1</to>
+                                                        </copy>
+                                                    </assign>
+                                                    <invoke name="InvokeWarehouseAskPrice" partnerLink="Warehouse" operation="order" portType="ns1:Warehouse" inputVariable="OrderIn" outputVariable="OrderOut"/>
+                                                    <assign name="AddTotalPriceFromWarehouse">
+                                                        <copy>
+                                                            <from>$OrderOut.parameters/return + $Get_customerOut.parameters/return/openBalance</from>
+                                                            <to>$Get_customerOut.parameters/return/openBalance</to>
+                                                        </copy>
+                                                    </assign>
+                                                </sequence>
+                                                <else>
+                                                    <sequence name="Sequence3">
+                                                        <assign name="CopyOrderToSupplier">
+                                                            <copy>
+                                                                <from>$Check_availabilityIn.parameters/arg0</from>
+                                                                <to>$SupplierOrderIn.parameters/arg0</to>
+                                                            </copy>
+                                                            <copy>
+                                                                <from>$Check_availabilityIn.parameters/arg1</from>
+                                                                <to>$SupplierOrderIn.parameters/arg1</to>
+                                                            </copy>
+                                                        </assign>
+                                                        <invoke name="InvokeSupplier" partnerLink="Supplier" operation="order" xmlns:ns1="http://bookstore/" portType="ns1:Supplier" inputVariable="SupplierOrderIn" outputVariable="SupplierOrderOut"/>
+                                                        <assign name="AddTotalPriceFromSupplier">
+                                                            <copy>
+                                                                <from>$Get_customerOut.parameters/return/openBalance + $SupplierOrderOut.parameters/return</from>
+                                                                <to>$Get_customerOut.parameters/return/openBalance</to>
+                                                            </copy>
+                                                        </assign>
+                                                    </sequence>
+                                                </else>
+                                            </if>
+                                    </sequence>
+                            </scope>
+                    </forEach>
+               <!-- </sequence>-->
+            </if>
+            <reply name="End" partnerLink="Bookstore" operation="requestOrder" xmlns:tns="http://infosys.tuwien.ac.at/aic10/ass2/process" portType="ns1:Bookstore" variable="RequestOrderOut" xmlns:ns1="http://bookstore/"/>
+        </sequence>
+    </sequence>
+</process>
+
+
+
+
+
+
+
+
